@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Events - Selenium Automation Backend{% endblock %}
+
+{% block page_title %}System Events{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="refreshEvents()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+    <button type="button" class="btn btn-outline-secondary" onclick="exportEvents()">
+        <i class="fas fa-download me-1"></i>Export
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- Filters -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <label for="event-type-filter" class="form-label">Event Type</label>
+                        <select class="form-select" id="event-type-filter">
+                            <option value="">All Types</option>
+                            <option value="page_load">Page Load</option>
+                            <option value="click">Click</option>
+                            <option value="form_submit">Form Submit</option>
+                            <option value="captcha_detected">CAPTCHA Detected</option>
+                            <option value="error">Error</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="event-search" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="event-search" placeholder="Search events...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="event-task-filter" class="form-label">Task</label>
+                        <select class="form-select" id="event-task-filter">
+                            <option value="">All Tasks</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                                Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Events List -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>System Events
+                    <span class="badge bg-secondary ms-2" id="event-count">0</span>
+                </h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+                    <label class="form-check-label" for="auto-refresh">
+                        Auto Refresh
+                    </label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="events-container">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading events...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading events...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Events specific JavaScript
+class EventsManager {
+    constructor() {
+        this.events = [];
+        this.filters = {};
+        this.autoRefresh = true;
+        this.init();
+    }
+
+    async init() {
+        await this.loadEvents();
+        this.setupEventListeners();
+        this.startAutoRefresh();
+    }
+
+    async loadEvents() {
+        try {
+            const response = await api.getPageEvents(this.filters);
+            if (response.success) {
+                this.events = response.data.results || response.data;
+                this.renderEvents();
+                this.updateEventCount(this.events.length);
+            } else {
+                UIUtils.showAlert('Failed to load events', 'danger');
+            }
+        } catch (error) {
+            UIUtils.showAlert('Error loading events', 'danger');
+            console.error('Events load error:', error);
+        }
+    }
+
+    renderEvents() {
+        const container = document.getElementById('events-container');
+        if (!container) return;
+
+        if (this.events.length === 0) {
+            container.innerHTML = '<div class="text-center py-5"><p class="text-muted">No events found</p></div>';
+            return;
+        }
+
+        const eventsHTML = this.events.map(event => this.renderEventItem(event)).join('');
+        container.innerHTML = eventsHTML;
+    }
+
+    renderEventItem(event) {
+        const typeClass = this.getEventTypeClass(event.event_type);
+        const typeIcon = this.getEventTypeIcon(event.event_type);
+        
+        return `
+            <div class="event-item mb-2 p-3 border rounded ${typeClass}">
+                <div class="row align-items-start">
+                    <div class="col-md-1">
+                        <span class="badge bg-${typeClass}">
+                            <i class="fas fa-${typeIcon} me-1"></i>${event.event_type}
+                        </span>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="fw-bold">${event.url || 'N/A'}</div>
+                        <small class="text-muted">${event.task || 'System'}</small>
+                        ${event.note ? `<div class="mt-1"><small class="text-muted">${event.note}</small></div>` : ''}
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted">${UIUtils.formatDate(event.timestamp)}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getEventTypeClass(eventType) {
+        const classes = {
+            'page_load': 'border-info bg-info bg-opacity-10',
+            'click': 'border-primary bg-primary bg-opacity-10',
+            'form_submit': 'border-success bg-success bg-opacity-10',
+            'captcha_detected': 'border-warning bg-warning bg-opacity-10',
+            'error': 'border-danger bg-danger bg-opacity-10'
+        };
+        return classes[eventType] || 'border-secondary';
+    }
+
+    getEventTypeIcon(eventType) {
+        const icons = {
+            'page_load': 'file',
+            'click': 'hand-pointer',
+            'form_submit': 'paper-plane',
+            'captcha_detected': 'shield-alt',
+            'error': 'exclamation-triangle'
+        };
+        return icons[eventType] || 'info-circle';
+    }
+
+    updateEventCount(count) {
+        const countElement = document.getElementById('event-count');
+        if (countElement) {
+            countElement.textContent = count;
+        }
+    }
+
+    setupEventListeners() {
+        // Type filter
+        const typeFilter = document.getElementById('event-type-filter');
+        if (typeFilter) {
+            typeFilter.addEventListener('change', (e) => {
+                this.filters.event_type = e.target.value;
+                this.loadEvents();
+            });
+        }
+
+        // Search input
+        const searchInput = document.getElementById('event-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filters.search = e.target.value;
+                this.loadEvents();
+            });
+        }
+
+        // Auto refresh toggle
+        const autoRefreshToggle = document.getElementById('auto-refresh');
+        if (autoRefreshToggle) {
+            autoRefreshToggle.addEventListener('change', (e) => {
+                this.autoRefresh = e.target.checked;
+                if (this.autoRefresh) {
+                    this.startAutoRefresh();
+                } else {
+                    this.stopAutoRefresh();
+                }
+            });
+        }
+    }
+
+    startAutoRefresh() {
+        if (this.refreshInterval) return;
+        
+        this.refreshInterval = setInterval(() => {
+            if (this.autoRefresh) {
+                this.loadEvents();
+            }
+        }, 5000); // 5 seconds
+    }
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+    }
+}
+
+// Global functions
+function refreshEvents() {
+    if (window.eventsManager) {
+        window.eventsManager.loadEvents();
+    }
+}
+
+function exportEvents() {
+    UIUtils.showAlert('Export functionality coming soon', 'info');
+}
+
+function clearFilters() {
+    $('#event-type-filter').val('');
+    $('#event-search').val('');
+    $('#event-task-filter').val('');
+    
+    if (window.eventsManager) {
+        window.eventsManager.filters = {};
+        window.eventsManager.loadEvents();
+    }
+}
+
+// Initialize events manager
+$(document).ready(function() {
+    window.eventsManager = new EventsManager();
+});
+</script>
+{% endblock %}

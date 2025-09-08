@@ -405,3 +405,13 @@ real_time_monitor = RealTimeMonitor()
 
 # Create default rules
 create_default_rules(alert_manager)
+
+# Compatibility functions for the views
+def get_system_metrics() -> Dict[str, Any]:
+    """Get current system resource usage metrics."""
+    health_monitor = HealthMonitor()
+    return health_monitor.get_system_metrics()
+
+def alert_manager():
+    """Get the alert manager instance."""
+    return AlertManager()

@@ -353,3 +353,23 @@ class TemplateManager:
             recommendations.append('form_testing')
         
         return recommendations[:3]  # Return top 3 recommendations
+
+# Compatibility functions for the views
+def get_available_templates() -> dict:
+    """Returns a simplified list of available templates."""
+    manager = TemplateManager()
+    templates = manager.list_templates()
+    return {template['name']: {'name': template['name'], 'description': template['description']} for template in templates}
+
+def get_template_config(template_key: str) -> dict:
+    """Returns the default configuration for a given template key."""
+    manager = TemplateManager()
+    template = manager.get_template(template_key)
+    if template:
+        return template.get_config()
+    return {}
+
+def recommend_templates(url: str, content_keywords: list = None) -> list:
+    """Simulates AI-powered template recommendation based on URL and content keywords."""
+    manager = TemplateManager()
+    return manager.get_template_recommendations(url)

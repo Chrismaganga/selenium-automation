@@ -1,0 +1,485 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{{ page_title }}</h1>
+                <div>
+                    <a href="{% url 'task_edit' task_id %}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-edit"></i> Edit Task
+                    </a>
+                    <a href="{% url 'tasks' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Tasks
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Task Details</h5>
+                </div>
+                <div class="card-body">
+                    <div id="loadingSpinner" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading task details...</p>
+                    </div>
+                    
+                    <div id="taskDetails" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Basic Information</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Name:</strong></td>
+                                        <td id="taskName">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Status:</strong></td>
+                                        <td id="taskStatus">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Priority:</strong></td>
+                                        <td id="taskPriority">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Start URL:</strong></td>
+                                        <td><a href="#" id="taskUrl" target="_blank">-</a></td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Timing Information</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Created:</strong></td>
+                                        <td id="taskCreated">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Started:</strong></td>
+                                        <td id="taskStarted">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Finished:</strong></td>
+                                        <td id="taskFinished">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Duration:</strong></td>
+                                        <td id="taskDuration">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Description</h6>
+                                <p id="taskDescription" class="text-muted">-</p>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h6>Configuration</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Max Pages:</strong></td>
+                                        <td id="taskMaxPages">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Delay:</strong></td>
+                                        <td id="taskDelay">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Screenshots:</strong></td>
+                                        <td id="taskScreenshots">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>CAPTCHA Detection:</strong></td>
+                                        <td id="taskCaptchas">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Statistics</h6>
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td><strong>Pages Visited:</strong></td>
+                                        <td id="taskPagesVisited">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Success Rate:</strong></td>
+                                        <td id="taskSuccessRate">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>CAPTCHAs Detected:</strong></td>
+                                        <td id="taskCaptchasDetected">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Errors:</strong></td>
+                                        <td id="taskErrors">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Actions</h6>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-success" onclick="startTask()" id="startBtn">
+                                        <i class="fas fa-play"></i> Start Task
+                                    </button>
+                                    <button class="btn btn-warning" onclick="pauseTask()" id="pauseBtn">
+                                        <i class="fas fa-pause"></i> Pause Task
+                                    </button>
+                                    <button class="btn btn-danger" onclick="stopTask()" id="stopBtn">
+                                        <i class="fas fa-stop"></i> Stop Task
+                                    </button>
+                                    <button class="btn btn-info" onclick="refreshData()">
+                                        <i class="fas fa-sync"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Recent Logs</h5>
+                </div>
+                <div class="card-body">
+                    <div id="taskLogs">
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Task Progress</h5>
+                </div>
+                <div class="card-body">
+                    <div id="taskProgress">
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="viewScreenshots()">
+                            <i class="fas fa-image"></i> View Screenshots
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="viewEvents()">
+                            <i class="fas fa-list"></i> View Events
+                        </button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="exportData()">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteTask()">
+                            <i class="fas fa-trash"></i> Delete Task
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const taskId = '{{ task_id }}';
+
+// Load task data on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadTaskData();
+    loadTaskLogs();
+    setInterval(loadTaskData, 5000); // Refresh every 5 seconds
+});
+
+async function loadTaskData() {
+    try {
+        const response = await fetch(`/api/frontend/tasks/${taskId}/`);
+        if (response.ok) {
+            const task = await response.json();
+            populateTaskDetails(task);
+            updateTaskProgress(task);
+            updateActionButtons(task);
+        } else {
+            showAlert('danger', 'Error loading task data');
+        }
+    } catch (error) {
+        console.error('Error loading task data:', error);
+    }
+}
+
+function populateTaskDetails(task) {
+    document.getElementById('taskName').textContent = task.name || '-';
+    document.getElementById('taskStatus').innerHTML = `<span class="badge bg-${getStatusBadgeClass(task.status)}">${task.status}</span>`;
+    document.getElementById('taskPriority').innerHTML = `<span class="badge bg-${getPriorityBadgeClass(task.priority)}">${task.priority}</span>`;
+    document.getElementById('taskUrl').href = task.start_url || '#';
+    document.getElementById('taskUrl').textContent = task.start_url || '-';
+    document.getElementById('taskCreated').textContent = task.created_at ? new Date(task.created_at).toLocaleString() : '-';
+    document.getElementById('taskStarted').textContent = task.started_at ? new Date(task.started_at).toLocaleString() : '-';
+    document.getElementById('taskFinished').textContent = task.finished_at ? new Date(task.finished_at).toLocaleString() : '-';
+    document.getElementById('taskDuration').textContent = task.duration || '-';
+    document.getElementById('taskDescription').textContent = task.description || 'No description provided';
+    document.getElementById('taskMaxPages').textContent = task.max_pages || '-';
+    document.getElementById('taskDelay').textContent = task.delay ? `${task.delay}s` : '-';
+    document.getElementById('taskScreenshots').innerHTML = task.take_screenshots ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-danger"></i>';
+    document.getElementById('taskCaptchas').innerHTML = task.detect_captchas ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-danger"></i>';
+    document.getElementById('taskPagesVisited').textContent = task.total_pages_visited || '0';
+    document.getElementById('taskSuccessRate').textContent = task.success_rate ? `${task.success_rate}%` : '-';
+    document.getElementById('taskCaptchasDetected').textContent = task.captcha_events_count || '0';
+    document.getElementById('taskErrors').textContent = task.error_count || '0';
+
+    document.getElementById('loadingSpinner').style.display = 'none';
+    document.getElementById('taskDetails').style.display = 'block';
+}
+
+function updateTaskProgress(task) {
+    const progressDiv = document.getElementById('taskProgress');
+    const maxPages = task.max_pages || 1;
+    const visitedPages = task.total_pages_visited || 0;
+    const progressPercentage = Math.min((visitedPages / maxPages) * 100, 100);
+    
+    progressDiv.innerHTML = `
+        <div class="mb-2">
+            <div class="d-flex justify-content-between">
+                <span>Progress</span>
+                <span>${visitedPages}/${maxPages} pages</span>
+            </div>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: ${progressPercentage}%"></div>
+            </div>
+        </div>
+        <p class="small text-muted">${Math.round(progressPercentage)}% complete</p>
+    `;
+}
+
+function updateActionButtons(task) {
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    
+    // Reset all buttons
+    [startBtn, pauseBtn, stopBtn].forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('btn-success', 'btn-warning', 'btn-danger');
+        btn.classList.add('btn-outline-secondary');
+    });
+    
+    switch (task.status) {
+        case 'PENDING':
+            startBtn.classList.remove('btn-outline-secondary');
+            startBtn.classList.add('btn-success');
+            break;
+        case 'RUNNING':
+            pauseBtn.classList.remove('btn-outline-secondary');
+            pauseBtn.classList.add('btn-warning');
+            stopBtn.classList.remove('btn-outline-secondary');
+            stopBtn.classList.add('btn-danger');
+            break;
+        case 'PAUSED':
+            startBtn.classList.remove('btn-outline-secondary');
+            startBtn.classList.add('btn-success');
+            stopBtn.classList.remove('btn-outline-secondary');
+            stopBtn.classList.add('btn-danger');
+            break;
+        case 'COMPLETED':
+        case 'FAILED':
+        case 'CANCELLED':
+            [startBtn, pauseBtn, stopBtn].forEach(btn => btn.disabled = true);
+            break;
+    }
+}
+
+async function loadTaskLogs() {
+    try {
+        const response = await fetch(`/api/frontend/logs/?task_id=${taskId}&limit=10`);
+        if (response.ok) {
+            const data = await response.json();
+            displayTaskLogs(data.results || []);
+        }
+    } catch (error) {
+        console.error('Error loading task logs:', error);
+    }
+}
+
+function displayTaskLogs(logs) {
+    const logsDiv = document.getElementById('taskLogs');
+    if (logs.length === 0) {
+        logsDiv.innerHTML = '<p class="text-muted">No logs available</p>';
+        return;
+    }
+    
+    const logsHtml = logs.map(log => `
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="flex-grow-1">
+                <span class="badge bg-${getLogLevelBadgeClass(log.level)} me-2">${log.level}</span>
+                <span class="small">${log.message}</span>
+            </div>
+            <small class="text-muted">${new Date(log.timestamp).toLocaleTimeString()}</small>
+        </div>
+    `).join('');
+    
+    logsDiv.innerHTML = logsHtml;
+}
+
+function getStatusBadgeClass(status) {
+    const statusClasses = {
+        'PENDING': 'secondary',
+        'RUNNING': 'primary',
+        'COMPLETED': 'success',
+        'FAILED': 'danger',
+        'CANCELLED': 'warning',
+        'PAUSED': 'info'
+    };
+    return statusClasses[status] || 'secondary';
+}
+
+function getPriorityBadgeClass(priority) {
+    const priorityClasses = {
+        'LOW': 'secondary',
+        'NORMAL': 'primary',
+        'HIGH': 'warning',
+        'URGENT': 'danger'
+    };
+    return priorityClasses[priority] || 'secondary';
+}
+
+function getLogLevelBadgeClass(level) {
+    const levelClasses = {
+        'DEBUG': 'secondary',
+        'INFO': 'info',
+        'WARNING': 'warning',
+        'ERROR': 'danger',
+        'CRITICAL': 'danger'
+    };
+    return levelClasses[level] || 'secondary';
+}
+
+// Task actions
+async function startTask() {
+    await performTaskAction('start');
+}
+
+async function pauseTask() {
+    await performTaskAction('pause');
+}
+
+async function stopTask() {
+    await performTaskAction('stop');
+}
+
+async function performTaskAction(action) {
+    try {
+        const response = await fetch(`/api/tasks/${taskId}/${action}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+        
+        if (response.ok) {
+            showAlert('success', `Task ${action}ed successfully!`);
+            loadTaskData();
+        } else {
+            const error = await response.json();
+            showAlert('danger', `Error ${action}ing task: ${error.detail || 'Unknown error'}`);
+        }
+    } catch (error) {
+        showAlert('danger', `Error ${action}ing task: ${error.message}`);
+    }
+}
+
+function refreshData() {
+    loadTaskData();
+    loadTaskLogs();
+    showAlert('info', 'Data refreshed');
+}
+
+// Placeholder functions for future implementation
+function viewScreenshots() {
+    showAlert('info', 'Screenshot viewer coming soon!');
+}
+
+function viewEvents() {
+    window.location.href = `/events/?task_id=${taskId}`;
+}
+
+function exportData() {
+    showAlert('info', 'Data export coming soon!');
+}
+
+async function deleteTask() {
+    if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            if (response.ok) {
+                showAlert('success', 'Task deleted successfully!');
+                setTimeout(() => {
+                    window.location.href = '/tasks/';
+                }, 1500);
+            } else {
+                const error = await response.json();
+                showAlert('danger', 'Error deleting task: ' + (error.detail || 'Unknown error'));
+            }
+        } catch (error) {
+            showAlert('danger', 'Error deleting task: ' + error.message);
+        }
+    }
+}
+
+// Show alert
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

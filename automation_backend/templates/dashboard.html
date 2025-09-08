@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Dashboard - Selenium Automation Backend{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="window.location.href='/tasks/create/'">
+        <i class="fas fa-plus me-1"></i>Create Task
+    </button>
+    <button type="button" class="btn btn-outline-secondary" id="refresh-dashboard">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="dashboard-container">
+    <!-- System Health Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card health-card" data-metric="cpu_usage">
+                <div class="card-body text-center">
+                    <i class="fas fa-microchip text-primary mb-2" style="font-size: 2rem;"></i>
+                    <h5 class="metric-value">0%</h5>
+                    <p class="mb-1">CPU Usage</p>
+                    <span class="badge metric-status">Normal</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card health-card" data-metric="memory_usage">
+                <div class="card-body text-center">
+                    <i class="fas fa-memory text-info mb-2" style="font-size: 2rem;"></i>
+                    <h5 class="metric-value">0%</h5>
+                    <p class="mb-1">Memory Usage</p>
+                    <span class="badge metric-status">Normal</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card health-card" data-metric="disk_usage">
+                <div class="card-body text-center">
+                    <i class="fas fa-hdd text-warning mb-2" style="font-size: 2rem;"></i>
+                    <h5 class="metric-value">0%</h5>
+                    <p class="mb-1">Disk Usage</p>
+                    <span class="badge metric-status">Normal</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card health-card" data-metric="uptime">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock text-success mb-2" style="font-size: 2rem;"></i>
+                    <h5 class="metric-value">0s</h5>
+                    <p class="mb-1">Uptime</p>
+                    <span class="badge metric-status">Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card" data-metric="total_tasks">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-value">0</div>
+                        <div class="stats-label">Total Tasks</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" data-metric="completed_tasks" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-value">0</div>
+                        <div class="stats-label">Completed</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" data-metric="failed_tasks" style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-value">0</div>
+                        <div class="stats-label">Failed</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card" data-metric="success_rate" style="background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stats-value">0%</div>
+                        <div class="stats-label">Success Rate</div>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Task Status Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="taskStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>Performance Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Resources and Recent Tasks -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-server me-2"></i>System Resources
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="systemResourcesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Tasks
+                    </h5>
+                    <a href="/tasks/" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div id="recent-tasks">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-primary w-100 quick-action" data-action="create-task">
+                                <i class="fas fa-plus me-2"></i>Create Task
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-info w-100 quick-action" data-action="view-tasks">
+                                <i class="fas fa-tasks me-2"></i>View Tasks
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-success w-100 quick-action" data-action="view-monitoring">
+                                <i class="fas fa-chart-line me-2"></i>Monitoring
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-warning w-100 quick-action" data-action="view-logs">
+                                <i class="fas fa-file-alt me-2"></i>View Logs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dashboard-specific JavaScript
+$(document).ready(function() {
+    // Initialize dashboard
+    if (typeof Dashboard !== 'undefined') {
+        window.dashboard = new Dashboard();
+    }
+});
+</script>
+{% endblock %}

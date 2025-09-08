@@ -116,3 +116,43 @@ def generate_daily_report():
     except Exception as e:
         logger.error(f"Daily report generation failed: {e}")
         raise
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def optimize_performance_task(self, task_id: str):
+    """
+    Simulates an AI-driven performance optimization task for a given automation task.
+    This would analyze past runs and suggest config changes.
+    """
+    try:
+        task = AutomationTask.objects.get(id=task_id)
+        logger.info(f"Analyzing performance for task {task_id} for optimization.")
+
+        # Placeholder for actual AI/ML logic
+        # This would involve:
+        # 1. Retrieving historical PageEvent and AutomationStats data for the task/template.
+        # 2. Analyzing metrics like avg_page_load_time, resource usage, error patterns.
+        # 3. Suggesting changes to task.delay_between_requests, task.headless, task.window_size, user_agent, etc.
+        
+        # Simulate some recommendations
+        recommendations = []
+        if hasattr(task, 'stats') and task.stats.avg_page_load_time > 5.0:
+            recommendations.append("Consider increasing 'delay_between_requests' for stability.")
+        if hasattr(task, 'stats') and task.stats.cpu_usage_percent > 70:
+            recommendations.append("Consider reducing 'max_pages' or 'max_depth' to lower CPU load.")
+        if task.headless is False and hasattr(task, 'stats') and task.stats.memory_usage_mb > 1000:
+            recommendations.append("Switch to 'headless' mode to reduce memory consumption.")
+        
+        if recommendations:
+            task.notes = (task.notes or "") + "\nPerformance Optimization Suggestions:\n" + "\n".join(recommendations)
+            task.save(update_fields=["notes"])
+            AutomationLog.objects.create(task=task, level="INFO", message="Performance optimization suggestions generated.", details={"recommendations": recommendations})
+            logger.info(f"Performance optimization suggestions for task {task_id}: {recommendations}")
+        else:
+            AutomationLog.objects.create(task=task, level="INFO", message="No specific performance optimization suggestions at this time.")
+            logger.info(f"No specific performance optimization suggestions for task {task_id}.")
+
+    except AutomationTask.DoesNotExist:
+        logger.error(f"AutomationTask {task_id} not found for performance optimization.")
+    except Exception as e:
+        logger.error(f"Performance optimization failed: {e}", exc_info=True)
+        raise

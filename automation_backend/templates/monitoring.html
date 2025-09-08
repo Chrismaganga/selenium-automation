@@ -1,0 +1,524 @@
+{% extends 'base.html' %}
+
+
+{% block title %}Monitoring - Selenium Automation Backend{% endblock %}
+
+{% block page_title %}System Monitoring{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="refreshMonitoring()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+    <button type="button" class="btn btn-outline-secondary" onclick="exportMonitoringData()">
+        <i class="fas fa-download me-1"></i>Export
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="monitoring-container">
+    <!-- Real-time Status -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-server text-primary mb-2" style="font-size: 2rem;"></i>
+                    <h5 id="system-status">Online</h5>
+                    <p class="mb-0">System Status</p>
+                    <span class="realtime-indicator"></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-tasks text-info mb-2" style="font-size: 2rem;"></i>
+                    <h5 id="active-tasks">0</h5>
+                    <p class="mb-0">Active Tasks</p>
+                    <span class="realtime-indicator"></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle text-warning mb-2" style="font-size: 2rem;"></i>
+                    <h5 id="captcha-events">0</h5>
+                    <p class="mb-0">CAPTCHA Events</p>
+                    <span class="realtime-indicator"></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-chart-line text-success mb-2" style="font-size: 2rem;"></i>
+                    <h5 id="success-rate">0%</h5>
+                    <p class="mb-0">Success Rate</p>
+                    <span class="realtime-indicator"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Charts -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-area me-2"></i>System Performance
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-memory me-2"></i>Resource Usage
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="resourceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Events -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>Recent Events
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="filterEvents('all')">All</button>
+                        <button class="btn btn-outline-info" onclick="filterEvents('page')">Pages</button>
+                        <button class="btn btn-outline-warning" onclick="filterEvents('captcha')">CAPTCHA</button>
+                    </div>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <div id="events-list">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading events...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>System Logs
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="filterLogs('all')">All</button>
+                        <button class="btn btn-outline-danger" onclick="filterLogs('error')">Errors</button>
+                        <button class="btn btn-outline-warning" onclick="filterLogs('warning')">Warnings</button>
+                    </div>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <div id="logs-list">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading logs...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health Details -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-heartbeat me-2"></i>System Health Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="health-details">
+                        <!-- Health details will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Monitoring specific JavaScript
+class MonitoringDashboard {
+    constructor() {
+        this.charts = {};
+        this.updateInterval = 5000; // 5 seconds
+        this.isActive = false;
+        this.init();
+    }
+
+    async init() {
+        await this.loadMonitoringData();
+        this.initializeCharts();
+        this.startAutoRefresh();
+        this.setupEventListeners();
+    }
+
+    async loadMonitoringData() {
+        try {
+            // Load system health
+            const healthResponse = await api.getSystemHealth();
+            if (healthResponse.success) {
+                this.updateSystemHealth(healthResponse.data);
+            }
+
+            // Load performance data
+            const performanceResponse = await api.getSystemPerformance();
+            if (performanceResponse.success) {
+                this.updatePerformanceData(performanceResponse.data);
+            }
+
+            // Load recent events
+            await this.loadRecentEvents();
+            
+            // Load system logs
+            await this.loadSystemLogs();
+
+        } catch (error) {
+            UIUtils.showAlert('Failed to load monitoring data', 'danger');
+            console.error('Monitoring load error:', error);
+        }
+    }
+
+    updateSystemHealth(data) {
+        // Update status indicators
+        const statusElement = document.getElementById('system-status');
+        if (statusElement) {
+            statusElement.textContent = data.overall_health ? 'Online' : 'Offline';
+            statusElement.className = data.overall_health ? 'text-success' : 'text-danger';
+        }
+
+        // Update active tasks
+        const activeTasksElement = document.getElementById('active-tasks');
+        if (activeTasksElement) {
+            activeTasksElement.textContent = data.active_tasks || 0;
+        }
+
+        // Update CAPTCHA events
+        const captchaEventsElement = document.getElementById('captcha-events');
+        if (captchaEventsElement) {
+            captchaEventsElement.textContent = data.captcha_events || 0;
+        }
+
+        // Update success rate
+        const successRateElement = document.getElementById('success-rate');
+        if (successRateElement) {
+            successRateElement.textContent = `${(data.success_rate || 0).toFixed(1)}%`;
+        }
+
+        // Update health details
+        this.updateHealthDetails(data);
+    }
+
+    updateHealthDetails(data) {
+        const container = document.getElementById('health-details');
+        if (!container) return;
+
+        const healthItems = [
+            { label: 'CPU Usage', value: `${data.cpu_usage || 0}%`, status: this.getHealthStatus(data.cpu_usage) },
+            { label: 'Memory Usage', value: `${data.memory_usage || 0}%`, status: this.getHealthStatus(data.memory_usage) },
+            { label: 'Disk Usage', value: `${data.disk_usage || 0}%`, status: this.getHealthStatus(data.disk_usage) },
+            { label: 'Redis Connected', value: data.redis_connected ? 'Yes' : 'No', status: data.redis_connected ? 'success' : 'danger' },
+            { label: 'Celery Workers', value: data.celery_workers || 0, status: data.celery_workers > 0 ? 'success' : 'danger' },
+            { label: 'Uptime', value: UIUtils.formatDuration(data.uptime || 0), status: 'info' }
+        ];
+
+        const healthHTML = healthItems.map(item => `
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="card-title">${item.label}</h6>
+                        <h4 class="text-${item.status}">${item.value}</h4>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = healthHTML;
+    }
+
+    getHealthStatus(value) {
+        if (value > 80) return 'danger';
+        if (value > 60) return 'warning';
+        return 'success';
+    }
+
+    updatePerformanceData(data) {
+        // Update performance charts
+        if (this.charts.performance && data.performance_history) {
+            this.charts.performance.data.labels = data.performance_history.labels;
+            this.charts.performance.data.datasets[0].data = data.performance_history.success_rates;
+            this.charts.performance.data.datasets[1].data = data.performance_history.error_rates;
+            this.charts.performance.update();
+        }
+
+        if (this.charts.resource && data.resource_usage) {
+            this.charts.resource.data.datasets[0].data = [
+                data.resource_usage.cpu || 0,
+                data.resource_usage.memory || 0,
+                data.resource_usage.disk || 0
+            ];
+            this.charts.resource.update();
+        }
+    }
+
+    async loadRecentEvents() {
+        try {
+            const response = await api.getPageEvents({ limit: 20 });
+            if (response.success) {
+                this.renderEvents(response.data.results || response.data);
+            }
+        } catch (error) {
+            console.error('Failed to load events:', error);
+        }
+    }
+
+    async loadSystemLogs() {
+        try {
+            const response = await api.getLogs({ limit: 20 });
+            if (response.success) {
+                this.renderLogs(response.data.results || response.data);
+            }
+        } catch (error) {
+            console.error('Failed to load logs:', error);
+        }
+    }
+
+    renderEvents(events) {
+        const container = document.getElementById('events-list');
+        if (!container) return;
+
+        if (events.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">No recent events</p>';
+            return;
+        }
+
+        const eventsHTML = events.map(event => `
+            <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                <div class="me-3">
+                    <i class="fas fa-${this.getEventIcon(event.event_type)} text-${this.getEventColor(event.event_type)}"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${event.event_type}</div>
+                    <small class="text-muted">${event.url || 'N/A'}</small>
+                </div>
+                <div class="text-muted small">
+                    ${UIUtils.formatDate(event.timestamp)}
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = eventsHTML;
+    }
+
+    renderLogs(logs) {
+        const container = document.getElementById('logs-list');
+        if (!container) return;
+
+        if (logs.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center">No recent logs</p>';
+            return;
+        }
+
+        const logsHTML = logs.map(log => `
+            <div class="d-flex align-items-start mb-2 p-2 border rounded">
+                <div class="me-3">
+                    <span class="badge bg-${this.getLogLevelColor(log.level)}">${log.level}</span>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${log.message}</div>
+                    <small class="text-muted">${log.task || 'System'}</small>
+                </div>
+                <div class="text-muted small">
+                    ${UIUtils.formatDate(log.timestamp)}
+                </div>
+            </div>
+        `).join('');
+
+        container.innerHTML = logsHTML;
+    }
+
+    getEventIcon(eventType) {
+        const icons = {
+            'page_load': 'file',
+            'click': 'hand-pointer',
+            'form_submit': 'paper-plane',
+            'captcha_detected': 'shield-alt',
+            'error': 'exclamation-triangle'
+        };
+        return icons[eventType] || 'info-circle';
+    }
+
+    getEventColor(eventType) {
+        const colors = {
+            'page_load': 'info',
+            'click': 'primary',
+            'form_submit': 'success',
+            'captcha_detected': 'warning',
+            'error': 'danger'
+        };
+        return colors[eventType] || 'secondary';
+    }
+
+    getLogLevelColor(level) {
+        const colors = {
+            'ERROR': 'danger',
+            'WARNING': 'warning',
+            'INFO': 'info',
+            'DEBUG': 'secondary'
+        };
+        return colors[level] || 'secondary';
+    }
+
+    initializeCharts() {
+        // Performance Chart
+        this.initPerformanceChart();
+        
+        // Resource Chart
+        this.initResourceChart();
+    }
+
+    initPerformanceChart() {
+        const ctx = document.getElementById('performanceChart');
+        if (!ctx) return;
+
+        this.charts.performance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Success Rate',
+                    data: [],
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Error Rate',
+                    data: [],
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+
+    initResourceChart() {
+        const ctx = document.getElementById('resourceChart');
+        if (!ctx) return;
+
+        this.charts.resource = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['CPU', 'Memory', 'Disk'],
+                datasets: [{
+                    label: 'Usage %',
+                    data: [0, 0, 0],
+                    backgroundColor: [
+                        '#0dcaf0',
+                        '#198754',
+                        '#ffc107'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+
+    setupEventListeners() {
+        // Refresh button
+        const refreshBtn = document.querySelector('[onclick="refreshMonitoring()"]');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadMonitoringData());
+        }
+    }
+
+    startAutoRefresh() {
+        this.isActive = true;
+        this.refreshInterval = setInterval(() => {
+            this.loadMonitoringData();
+        }, this.updateInterval);
+    }
+
+    stopAutoRefresh() {
+        this.isActive = false;
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+    }
+}
+
+// Global functions
+function refreshMonitoring() {
+    if (window.monitoringDashboard) {
+        window.monitoringDashboard.loadMonitoringData();
+    }
+}
+
+function exportMonitoringData() {
+    UIUtils.showAlert('Export functionality coming soon', 'info');
+}
+
+function filterEvents(type) {
+    // Implementation for filtering events
+    console.log('Filter events:', type);
+}
+
+function filterLogs(level) {
+    // Implementation for filtering logs
+    console.log('Filter logs:', level);
+}
+
+// Initialize monitoring dashboard
+$(document).ready(function() {
+    window.monitoringDashboard = new MonitoringDashboard();
+});
+</script>
+{% endblock %}

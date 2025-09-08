@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+
+{% block title %}System Logs - Selenium Automation Backend{% endblock %}
+
+{% block page_title %}System Logs{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group" role="group">
+    <button type="button" class="btn btn-outline-primary" onclick="refreshLogs()">
+        <i class="fas fa-sync-alt me-1"></i>Refresh
+    </button>
+    <button type="button" class="btn btn-outline-secondary" onclick="exportLogs()">
+        <i class="fas fa-download me-1"></i>Export
+    </button>
+    <button type="button" class="btn btn-outline-danger" onclick="clearLogs()">
+        <i class="fas fa-trash me-1"></i>Clear
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- Filters -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <label for="log-level-filter" class="form-label">Log Level</label>
+                        <select class="form-select" id="log-level-filter">
+                            <option value="">All Levels</option>
+                            <option value="ERROR">Error</option>
+                            <option value="WARNING">Warning</option>
+                            <option value="INFO">Info</option>
+                            <option value="DEBUG">Debug</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="log-search" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="log-search" placeholder="Search logs...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="log-task-filter" class="form-label">Task</label>
+                        <select class="form-select" id="log-task-filter">
+                            <option value="">All Tasks</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                                Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs List -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt me-2"></i>System Logs
+                    <span class="badge bg-secondary ms-2" id="log-count">0</span>
+                </h5>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+                    <label class="form-check-label" for="auto-refresh">
+                        Auto Refresh
+                    </label>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="logs-container">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading logs...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading logs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Logs specific JavaScript
+class LogsManager {
+    constructor() {
+        this.logs = [];
+        this.filters = {};
+        this.autoRefresh = true;
+        this.init();
+    }
+
+    async init() {
+        await this.loadLogs();
+        this.setupEventListeners();
+        this.startAutoRefresh();
+    }
+
+    async loadLogs() {
+        try {
+            const response = await api.getLogs(this.filters);
+            if (response.success) {
+                this.logs = response.data.results || response.data;
+                this.renderLogs();
+                this.updateLogCount(this.logs.length);
+            } else {
+                UIUtils.showAlert('Failed to load logs', 'danger');
+            }
+        } catch (error) {
+            UIUtils.showAlert('Error loading logs', 'danger');
+            console.error('Logs load error:', error);
+        }
+    }
+
+    renderLogs() {
+        const container = document.getElementById('logs-container');
+        if (!container) return;
+
+        if (this.logs.length === 0) {
+            container.innerHTML = '<div class="text-center py-5"><p class="text-muted">No logs found</p></div>';
+            return;
+        }
+
+        const logsHTML = this.logs.map(log => this.renderLogItem(log)).join('');
+        container.innerHTML = logsHTML;
+    }
+
+    renderLogItem(log) {
+        const levelClass = this.getLogLevelClass(log.level);
+        const levelIcon = this.getLogLevelIcon(log.level);
+        
+        return `
+            <div class="log-item mb-2 p-3 border rounded ${levelClass}">
+                <div class="row align-items-start">
+                    <div class="col-md-1">
+                        <span class="badge bg-${levelClass}">
+                            <i class="fas fa-${levelIcon} me-1"></i>${log.level}
+                        </span>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="fw-bold">${log.message}</div>
+                        <small class="text-muted">${log.task || 'System'}</small>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted">${UIUtils.formatDate(log.timestamp)}</small>
+                    </div>
+                </div>
+                ${log.details ? `<div class="mt-2"><small class="text-muted">${log.details}</small></div>` : ''}
+            </div>
+        `;
+    }
+
+    getLogLevelClass(level) {
+        const classes = {
+            'ERROR': 'border-danger bg-danger bg-opacity-10',
+            'WARNING': 'border-warning bg-warning bg-opacity-10',
+            'INFO': 'border-info bg-info bg-opacity-10',
+            'DEBUG': 'border-secondary bg-secondary bg-opacity-10'
+        };
+        return classes[level] || 'border-secondary';
+    }
+
+    getLogLevelIcon(level) {
+        const icons = {
+            'ERROR': 'exclamation-triangle',
+            'WARNING': 'exclamation-circle',
+            'INFO': 'info-circle',
+            'DEBUG': 'bug'
+        };
+        return icons[level] || 'info-circle';
+    }
+
+    updateLogCount(count) {
+        const countElement = document.getElementById('log-count');
+        if (countElement) {
+            countElement.textContent = count;
+        }
+    }
+
+    setupEventListeners() {
+        // Level filter
+        const levelFilter = document.getElementById('log-level-filter');
+        if (levelFilter) {
+            levelFilter.addEventListener('change', (e) => {
+                this.filters.level = e.target.value;
+                this.loadLogs();
+            });
+        }
+
+        // Search input
+        const searchInput = document.getElementById('log-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filters.search = e.target.value;
+                this.loadLogs();
+            });
+        }
+
+        // Auto refresh toggle
+        const autoRefreshToggle = document.getElementById('auto-refresh');
+        if (autoRefreshToggle) {
+            autoRefreshToggle.addEventListener('change', (e) => {
+                this.autoRefresh = e.target.checked;
+                if (this.autoRefresh) {
+                    this.startAutoRefresh();
+                } else {
+                    this.stopAutoRefresh();
+                }
+            });
+        }
+    }
+
+    startAutoRefresh() {
+        if (this.refreshInterval) return;
+        
+        this.refreshInterval = setInterval(() => {
+            if (this.autoRefresh) {
+                this.loadLogs();
+            }
+        }, 5000); // 5 seconds
+    }
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+    }
+}
+
+// Global functions
+function refreshLogs() {
+    if (window.logsManager) {
+        window.logsManager.loadLogs();
+    }
+}
+
+function exportLogs() {
+    UIUtils.showAlert('Export functionality coming soon', 'info');
+}
+
+function clearLogs() {
+    if (confirm('Are you sure you want to clear all logs?')) {
+        UIUtils.showAlert('Clear logs functionality coming soon', 'info');
+    }
+}
+
+function clearFilters() {
+    $('#log-level-filter').val('');
+    $('#log-search').val('');
+    $('#log-task-filter').val('');
+    
+    if (window.logsManager) {
+        window.logsManager.filters = {};
+        window.logsManager.loadLogs();
+    }
+}
+
+// Initialize logs manager
+$(document).ready(function() {
+    window.logsManager = new LogsManager();
+});
+</script>
+{% endblock %}

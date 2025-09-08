@@ -147,3 +147,22 @@ class TaskUpdateSerializer(serializers.ModelSerializer):
             if 'priority' in data and data['priority'] != self.instance.priority:
                 raise serializers.ValidationError("Cannot change priority while task is running")
         return data
+
+class SystemHealthSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    timestamp = serializers.DateTimeField()
+    django_version = serializers.CharField()
+    python_version = serializers.CharField()
+    celery_status = serializers.CharField()
+    redis_status = serializers.CharField()
+    database_status = serializers.CharField()
+    memory_usage_mb = serializers.FloatField()
+    cpu_usage_percent = serializers.FloatField()
+    disk_usage_percent = serializers.FloatField()
+    active_tasks = serializers.IntegerField()
+    pending_tasks = serializers.IntegerField()
+    failed_tasks = serializers.IntegerField()
+    uptime_seconds = serializers.FloatField()
+
+# Alias for compatibility
+AutomationTaskSerializer = AutomationTaskDetailSerializer
