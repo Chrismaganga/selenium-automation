@@ -5,6 +5,7 @@ from .views import (
     CaptchaEventViewSet, AutomationLogViewSet, SystemViewSet
 )
 
+# Create a single router for all views
 router = DefaultRouter()
 router.register(r'tasks', AutomationTaskViewSet, basename='task')
 router.register(r'page-events', PageEventViewSet, basename='page-event')
